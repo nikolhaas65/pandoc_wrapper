@@ -1,7 +1,34 @@
 #!/usr/bin/env python3
 """
-Pandoc wrapper that uncomments equation labels before compilation.
-Usage: python pandoc_wrapper.py input.md -o output.pdf [other pandoc args]
+Pandoc wrapper for processing markdown files with LaTeX equations.
+
+This script processes markdown files to enable proper equation numbering and
+cross-references in pandoc-generated PDFs while maintaining Jupyter preview compatibility.
+
+Processing steps:
+1. Uncomments equation labels: %\\label{eq:name} -> \\label{eq:name}
+2. Removes manual tags: \\tag{...} (to allow automatic LaTeX numbering)
+3. Runs pandoc with all provided arguments
+
+Usage:
+    python pandoc_wrapper.py input.md -o output.pdf [pandoc arguments]
+
+Example:
+    python pandoc_wrapper.py input.md -o output.pdf --pdf-engine=xelatex
+
+Markdown format for dual compatibility:
+    $$
+    \\begin{equation}
+    %\\label{eq:einstein}
+    \\tag{1}
+    E = mc^2
+    \\end{equation}
+    $$
+    
+    As shown in equation (1) or (\ref{eq:einstein})...
+
+In Jupyter: Shows (1) and (???) 
+In PDF: Shows proper automatic numbering with working \\ref{}
 """
 
 import sys
@@ -13,9 +40,17 @@ from pathlib import Path
 
 def uncomment_labels(content):
     """
-    Remove '%' from lines like %\label{eq:name}
+    Remove '%' from commented equation labels.
+    
+    Transforms: %\\label{eq:name} -> \\label{eq:name}
+    
+    Args:
+        content: String content of the markdown file
+        
+    Returns:
+        Processed content with uncommented labels
     """
-    # Pattern to match %\label{...} with optional whitespace
+    
     pattern = r'^\s*%\s*(\\label\{[^}]+\})\s*$'
     
     lines = content.split('\n')
@@ -32,49 +67,103 @@ def uncomment_labels(content):
     return '\n'.join(processed_lines)
 
 
+def remove_tags(content):
+    """
+    Remove lines containing \\tag{...} from equations for proper LaTeX numbering.
+    
+    This allows manual tags in Jupyter preview but automatic 
+    numbering in pandoc-generated PDFs.
+    
+    Args:
+        content: String content of the markdown file
+        
+    Returns:
+        Content with lines containing \tag{...} removed
+    """
+    lines = content.split('\n')
+    processed_lines = []
+    
+    # Pattern to match lines with \tag{...} (with optional whitespace)
+    pattern = r'^\s*\\tag\{[^}]*\}\s*$'
+    
+    for line in lines:
+        if not re.match(pattern, line):
+            processed_lines.append(line)
+    
+    return '\n'.join(processed_lines)
+    
 def main():
+    """Main execution function."""
     if len(sys.argv) < 2:
+        print("Pandoc Wrapper - Process markdown with equation labels")
+        print()
         print("Usage: python pandoc_wrapper.py input.md [pandoc arguments]")
-        print("Example: python pandoc_wrapper.py input.md -o output.pdf --pdf-engine=xelatex")
+        print()
+        print("Examples:")
+        print("  python pandoc_wrapper.py input.md -o output.pdf")
+        print("  python pandoc_wrapper.py input.md -o output.pdf --pdf-engine=xelatex")
+        print("  python pandoc_wrapper.py input.md -o output.pdf --toc --number-sections")
         sys.exit(1)
     
     input_file = sys.argv[1]
-    pandoc_args = sys.argv[2:]  # All remaining arguments for pandoc
+    pandoc_args = sys.argv[2:]  # All remaining arguments passed to pandoc
     
-    # Check if input file exists
-    if not Path(input_file).exists():
-        print(f"Error: Input file '{input_file}' not found")
+    # Validate input file exists
+    input_path = Path(input_file)
+    if not input_path.exists():
+        print(f"Error: Input file '{input_file}' not found", file=sys.stderr)
         sys.exit(1)
     
     # Read the input file
-    with open(input_file, 'r', encoding='utf-8') as f:
-        content = f.read()
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except Exception as e:
+        print(f"Error reading file '{input_file}': {e}", file=sys.stderr)
+        sys.exit(1)
     
     # Process the content
     processed_content = uncomment_labels(content)
+    processed_content = remove_tags(processed_content)
     
     # Create a temporary file with processed content
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as tmp:
-        tmp.write(processed_content)
-        tmp_path = tmp.name
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode='w', 
+            suffix='.md', 
+            delete=False, 
+            encoding='utf-8'
+        ) as tmp:
+            tmp.write(processed_content)
+            tmp_path = tmp.name
+    except Exception as e:
+        print(f"Error creating temporary file: {e}", file=sys.stderr)
+        sys.exit(1)
     
     try:
         # Run pandoc with the temporary file
+        print(pandoc_args)
         cmd = ['pandoc', tmp_path] + pandoc_args
         print(f"Running: {' '.join(cmd)}")
         result = subprocess.run(cmd, check=True)
         sys.exit(result.returncode)
+        
     except subprocess.CalledProcessError as e:
-        print(f"Error running pandoc: {e}")
+        print(f"Error: pandoc failed with exit code {e.returncode}", file=sys.stderr)
         sys.exit(e.returncode)
+        
     except FileNotFoundError:
-        print("Error: pandoc not found. Please install pandoc.")
+        print("Error: pandoc not found. Please install pandoc.", file=sys.stderr)
+        print("Visit: https://pandoc.org/installing.html", file=sys.stderr)
         sys.exit(1)
+        
     finally:
         # Clean up temporary file
-        Path(tmp_path).unlink(missing_ok=True)
+        try:
+            Path(tmp_path).unlink(missing_ok=True)
+        except Exception:
+            pass  # Ignore cleanup errors
 
 
 if __name__ == "__main__":
     main()
-    
