@@ -10,9 +10,9 @@ Requires pandoc and 'jupiter lab' installed
 %\label{eq:example_equation}
 X = Y + Z
 \end{equation}
-```
 
 and refer it with (\ref{eq:example_equation})
+```
 
 Note the use of "%\label". It allows to see equation in the Preview window.
 Unfortunately (\ref{eq:example_equation}) is visible as (???), however, it is properly shown in pdf. 
