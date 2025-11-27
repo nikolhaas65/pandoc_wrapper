@@ -5,10 +5,12 @@ Requires pandoc and 'jupiter lab' installed
 3. View this file via "Markdown Preview" in another Jupiter window (after split) 
 4. For equations as blocks always use:
 
+```
 \begin{equation}
 %\label{eq:example_equation}
 X = Y + Z
 \end{equation}
+```
 
 and refer it with (\ref{eq:example_equation})
 
