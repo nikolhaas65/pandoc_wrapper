@@ -8,13 +8,15 @@ Requires pandoc and 'jupiter lab' installed
 ```
 \begin{equation}
 %\label{eq:example_equation}
+\tag{eq:example_equation}
 X = Y + Z
 \end{equation}
 
 and refer it with (\ref{eq:example_equation})
 ```
 
-Note the use of "%\label". It allows to see equation in the Preview window.
+Note that use of "%\label" allows to see equation in the Preview window. Use of \tag{} with same label labels equation on screen. It helps to edit.
+
 Unfortunately (\ref{eq:example_equation}) is visible as (???), however, it is properly shown in pdf. 
 
 Compile file with pandoc_wrapper:
