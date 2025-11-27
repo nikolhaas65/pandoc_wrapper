@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+"""
+Pandoc wrapper that uncomments equation labels before compilation.
+Usage: python pandoc_wrapper.py input.md -o output.pdf [other pandoc args]
+"""
+
+import sys
+import subprocess
+import tempfile
+import re
+from pathlib import Path
+
+
+def uncomment_labels(content):
+    """
+    Remove '%' from lines like %\label{eq:name}
+    """
+    # Pattern to match %\label{...} with optional whitespace
+    pattern = r'^\s*%\s*(\\label\{[^}]+\})\s*$'
+    
+    lines = content.split('\n')
+    processed_lines = []
+    
+    for line in lines:
+        match = re.match(pattern, line)
+        if match:
+            # Uncomment the label
+            processed_lines.append(match.group(1))
+        else:
+            processed_lines.append(line)
+    
+    return '\n'.join(processed_lines)
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python pandoc_wrapper.py input.md [pandoc arguments]")
+        print("Example: python pandoc_wrapper.py input.md -o output.pdf --pdf-engine=xelatex")
+        sys.exit(1)
+    
+    input_file = sys.argv[1]
+    pandoc_args = sys.argv[2:]  # All remaining arguments for pandoc
+    
+    # Check if input file exists
+    if not Path(input_file).exists():
+        print(f"Error: Input file '{input_file}' not found")
+        sys.exit(1)
+    
+    # Read the input file
+    with open(input_file, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # Process the content
+    processed_content = uncomment_labels(content)
+    
+    # Create a temporary file with processed content
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as tmp:
+        tmp.write(processed_content)
+        tmp_path = tmp.name
+    
+    try:
+        # Run pandoc with the temporary file
+        cmd = ['pandoc', tmp_path] + pandoc_args
+        print(f"Running: {' '.join(cmd)}")
+        result = subprocess.run(cmd, check=True)
+        sys.exit(result.returncode)
+    except subprocess.CalledProcessError as e:
+        print(f"Error running pandoc: {e}")
+        sys.exit(e.returncode)
+    except FileNotFoundError:
+        print("Error: pandoc not found. Please install pandoc.")
+        sys.exit(1)
+    finally:
+        # Clean up temporary file
+        Path(tmp_path).unlink(missing_ok=True)
+
+
+if __name__ == "__main__":
+    main()
+    
