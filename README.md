@@ -22,3 +22,5 @@ Compile file with pandoc_wrapper:
 ```python pandoc_wrapper example.md -o example.pdf [other pandoc parameters]```
 
 It finds and replaces '%\label' with '\label' and then applies pandoc. All parameters of pandoc_wrapper are propagated to pandoc. 
+
+Reference. Scaffolded with Claude.ai.
