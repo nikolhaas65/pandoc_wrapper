@@ -16,6 +16,7 @@ Note the use of "%\label". It allows to see equation in the Preview window.
 Unfortunately (\ref{eq:example_equation}) is visible as (???), however, it is properly shown in pdf. 
 
 Compile file with pandoc_wrapper:
-python pandoc_wrapper example.md -o example.pdf [other pandoc parameters]
+
+```python pandoc_wrapper example.md -o example.pdf [other pandoc parameters]```
 
 It finds and replaces '%\label' with '\label' and then applies pandoc. All parameters of pandoc_wrapper are propagated to pandoc. 
